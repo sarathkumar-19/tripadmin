@@ -15,9 +15,9 @@ exports.token = (req, res, next) => {
 
   try {
     const decodedToken = jwt.verify(token, process.env.SECRET);
-    console.log("from isAuth.js ", decodedToken);
+    // console.log("from isAuth.js ", decodedToken);
     req.user = decodedToken;
-    console.log("from isAuth.js ", req.user);
+    // console.log("from isAuth.js ", req.user);  
     next(); 
   } catch (err) {
     console.error('JWT verification error:', err);

@@ -30,7 +30,7 @@ exports.getUserProfile = async (req, res) => {
   try {
     const email = req.user.email;
     
-    console.log("32 email ", email);
+    // console.log("32 email ", email);
     
     const query = `
       SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus
@@ -47,7 +47,7 @@ exports.getUserProfile = async (req, res) => {
       if (results.length === 0) {
         return res.status(404).json({ message: "User not found" });
       }
-      console.log("47 from user controller ", results[0]);
+      // console.log("47 from user controller ", results[0]);
       
       
       res.status(200).json(results[0]);
@@ -59,9 +59,9 @@ exports.getUserProfile = async (req, res) => {
 };
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
-  console.log(res);
+  // console.log(res);
   
-  console.log("59 req data ", req.body);
+  // console.log("59 req data ", req.body);
   try {
     let { firstName, middleName, lastName, mobile, dob, gender, email, maritalStatus } = req.body;
 
@@ -91,26 +91,29 @@ exports.editUserProfile = async (req, res) => {
         genderValue = gender; // Keep original value if not 'Male' or 'Female'
     }
 
-    console.log("60 maritalStatus ", maritalStatusValue);
-    console.log("60 gender ", genderValue);
+    // console.log("60 maritalStatus ", maritalStatusValue);
+    // console.log("60 gender ", genderValue);
     
     // Check if maritalStatus is provided, if not, exclude it from the update
     let updateQuery, queryParams;
     
+    // Use the correct user_id property
+    const userId = req.user.user_id; // or req.user.id, depending on your auth middleware
+
     if (maritalStatusValue !== undefined && maritalStatusValue !== null && maritalStatusValue !== '') {
       updateQuery = `
         UPDATE users 
         SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ?, martialStatus = ? 
-        WHERE user_id = ?;
+        WHERE email = ?;
       `;
-      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, maritalStatusValue, req.user];
+      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, maritalStatusValue, email];
     } else {
       updateQuery = `
         UPDATE users 
         SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ? 
         WHERE user_id = ?;
       `;
-      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, req.user];
+      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, userId];
     }
 
     // Update the user profile
@@ -122,7 +125,7 @@ exports.editUserProfile = async (req, res) => {
 
       // Fetch the updated user profile
       const fetchQuery = `SELECT firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE user_id = ?;`;
-      connection.query(fetchQuery, [req.user], (err, rows) => {
+      connection.query(fetchQuery, [userId], (err, rows) => {
         if (err) {
           console.error('Error fetching updated user profile:', err);
           return res.status(500).json({ message: "Internal server error" });
@@ -130,7 +133,7 @@ exports.editUserProfile = async (req, res) => {
 
         if (rows.length > 0) {
           // Send the updated user data as an object
-          console.log("Sending data is ", rows[0]);
+          // console.log("Sending data is ", rows[0]);
           user = rows[0]
           res.status(200).json({
             ...user,
@@ -325,7 +328,7 @@ exports.addTraveller = async (req, res) => {
 // Get Travellers
 exports.getTravelers = async (req, res) => {
   try {
-    const userId = req.user;
+    const userId = req.user.user_id; // <-- FIXED
 
     const query = `
       SELECT *
@@ -338,7 +341,7 @@ exports.getTravelers = async (req, res) => {
         console.error('Error fetching travelers:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
-      console.log("Travelers are ", travelers);
+      //    console.log("Travelers are ", travelers);
       res.status(200).json(travelers);
     });
   } catch (error) {
@@ -380,17 +383,16 @@ exports.removeTraveller = async (req, res) => {
 
 // API Function
 exports.imageUpload = async (req, res) => {
+  console.log("187 imageUpload API triggered..");
   try {
     const userId = req.params.id;
     if (!req.file || !req.file.path) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
     const imageUrl = req.file.path; // Cloudinary URL
-    // Save to DB using promise wrapper
     await connection.promise().query('UPDATE users SET img_url = ? WHERE user_id = ?', [imageUrl, userId]);
     res.status(200).json({ img_url: imageUrl, message: 'Image uploaded successfully' });
   } catch (error) {
-    console.error('Image upload error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
   }
 };
